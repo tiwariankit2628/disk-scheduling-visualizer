@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Disk Scheduling Algorithm Visualizer</title>
+  <link rel="stylesheet" href="style.css" />
+  <!-- Chart.js CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+</head>
+<body>
+
+<!-- ===== LOADING SCREEN ===== -->
+<div id="loader" class="loader-screen">
+  <div class="loader-inner">
+    <div class="loader-disk">
+      <div class="loader-platter"></div>
+      <div class="loader-arm"></div>
+      <div class="loader-spindle"></div>
+    </div>
+    <div class="loader-text">DISK SCHEDULER</div>
+    <div class="loader-sub">Initializing System...</div>
+    <div class="loader-bar"><div class="loader-progress"></div></div>
+  </div>
+</div>
+
+<!-- ===== MAIN APP ===== -->
+<div id="app" class="app-hidden">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">⬡</div>
+      <div class="logo-text">DiskViz<span>Pro</span></div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">SIMULATION</div>
+      <a class="nav-item active" data-section="input" onclick="showSection('input')">
+        <span class="nav-icon">◈</span> Configure
+      </a>
+      <a class="nav-item" data-section="visualize" onclick="showSection('visualize')">
+        <span class="nav-icon">◉</span> Visualize
+      </a>
+      <a class="nav-item" data-section="compare" onclick="showSection('compare')">
+        <span class="nav-icon">◫</span> Compare
+      </a>
+
+      <div class="nav-section-label" style="margin-top:1.5rem">ALGORITHMS</div>
+      <div class="algo-badge" id="badge-fcfs">FCFS</div>
+      <div class="algo-badge" id="badge-sstf">SSTF</div>
+      <div class="algo-badge" id="badge-scan">SCAN</div>
+      <div class="algo-badge" id="badge-cscan">C-SCAN</div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="system-status">
+        <span class="status-dot"></span> System Online
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="main-content">
+
+    <!-- TOP BAR -->
+    <header class="topbar">
+      <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+      <div class="topbar-title">
+        <span class="topbar-breadcrumb">Dashboard</span>
+        <span class="topbar-sep">›</span>
+        <span id="topbar-section-name">Configure</span>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn-icon" onclick="generateRandom()" title="Random Input">⚄</button>
+        <button class="btn-icon" onclick="resetAll()" title="Reset All">↺</button>
+      </div>
+    </header>
+
+    <!-- ===========================
+         SECTION 1: INPUT / CONFIGURE
+    =========================== -->
+    <section id="section-input" class="content-section active-section">
+      <div class="section-header">
+        <h1 class="section-title">Configure Simulation</h1>
+        <p class="section-sub">Set disk parameters and request queue to begin</p>
+      </div>
+
+      <div class="input-grid">
+        <!-- Disk Size -->
+        <div class="input-card">
+          <div class="input-card-header">
+            <span class="input-card-icon">💾</span>
+            <span class="input-card-title">Disk Size</span>
+            <div class="tooltip" data-tip="Total number of tracks on the disk (0 to N-1). Common: 200">?</div>
+          </div>
+          <input type="number" id="diskSize" class="input-field" value="200" min="10" max="9999"
+                 placeholder="e.g. 200" oninput="updateDiskRange()"/>
+          <div class="input-hint">Tracks: 0 – <span id="diskRangeHint">199</span></div>
+        </div>
+
+        <!-- Head Position -->
+        <div class="input-card">
+          <div class="input-card-header">
+            <span class="input-card-icon">📍</span>
+            <span class="input-card-title">Initial Head Position</span>
+            <div class="tooltip" data-tip="Where the read/write head starts before any requests are served">?</div>
+          </div>
+          <input type="number" id="headPos" class="input-field" value="53" min="0"
+                 placeholder="e.g. 53" />
+        </div>
+
+        <!-- Direction -->
+        <div class="input-card">
+          <div class="input-card-header">
+            <span class="input-card-icon">🧭</span>
+            <span class="input-card-title">Head Direction</span>
+            <div class="tooltip" data-tip="Initial movement direction for SCAN and C-SCAN algorithms">?</div>
+          </div>
+          <div class="direction-toggle">
+            <button class="dir-btn active" id="dir-right" onclick="setDirection('right')">→ RIGHT (High)</button>
+            <button class="dir-btn" id="dir-left" onclick="setDirection('left')">← LEFT (Low)</button>
+          </div>
+          <div class="input-hint">Only affects SCAN and C-SCAN</div>
+        </div>
+
+        <!-- Request Queue -->
+        <div class="input-card input-card-wide">
+          <div class="input-card-header">
+            <span class="input-card-icon">📋</span>
+            <span class="input-card-title">Request Queue</span>
+            <div class="tooltip" data-tip="Comma-separated list of track numbers to be accessed">?</div>
+          </div>
+          <input type="text" id="reqQueue" class="input-field" value="98,183,37,122,14,124,65,67"
+                 placeholder="e.g. 98,183,37,122,14,124,65,67" />
+          <div class="input-hint" id="queueCountHint">8 requests in queue</div>
+          <div class="queue-tags" id="queueTags"></div>
+        </div>
+      </div>
+
+      <!-- Algorithm Selection -->
+      <div class="algo-select-section">
+        <div class="section-header" style="margin-top:0">
+          <h2 class="section-title" style="font-size:1.2rem">Select Algorithms to Run</h2>
+        </div>
+        <div class="algo-cards-row">
+          <div class="algo-select-card active" id="acard-fcfs" onclick="toggleAlgo('fcfs')">
+            <div class="algo-select-icon">①</div>
+            <div class="algo-select-name">FCFS</div>
+            <div class="algo-select-desc">First Come First Serve</div>
+            <div class="algo-select-check" id="check-fcfs">✓</div>
+          </div>
+          <div class="algo-select-card active" id="acard-sstf" onclick="toggleAlgo('sstf')">
+            <div class="algo-select-icon">②</div>
+            <div class="algo-select-name">SSTF</div>
+            <div class="algo-select-desc">Shortest Seek Time First</div>
+            <div class="algo-select-check" id="check-sstf">✓</div>
+          </div>
+          <div class="algo-select-card active" id="acard-scan" onclick="toggleAlgo('scan')">
+            <div class="algo-select-icon">③</div>
+            <div class="algo-select-name">SCAN</div>
+            <div class="algo-select-desc">Elevator Algorithm</div>
+            <div class="algo-select-check" id="check-scan">✓</div>
+          </div>
+          <div class="algo-select-card active" id="acard-cscan" onclick="toggleAlgo('cscan')">
+            <div class="algo-select-icon">④</div>
+            <div class="algo-select-name">C-SCAN</div>
+            <div class="algo-select-desc">Circular SCAN</div>
+            <div class="algo-select-check" id="check-cscan">✓</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Run Button -->
+      <div class="run-section">
+        <button class="btn-run" onclick="runSimulation()">
+          <span class="btn-run-icon">▶</span>
+          RUN SIMULATION
+        </button>
+        <button class="btn-secondary" onclick="generateRandom()">⚄ Random Input</button>
+        <button class="btn-secondary" onclick="resetAll()">↺ Reset</button>
+      </div>
+    </section>
+
+    <!-- ===========================
+         SECTION 2: VISUALIZE
+    =========================== -->
+    <section id="section-visualize" class="content-section">
+      <div class="section-header">
+        <h1 class="section-title">Visualization</h1>
+        <p class="section-sub">Animated head movement across disk tracks</p>
+      </div>
+
+      <!-- Algorithm Tabs -->
+      <div class="viz-tabs" id="vizTabs">
+        <button class="viz-tab active" id="tab-fcfs" onclick="selectVizTab('fcfs')">FCFS</button>
+        <button class="viz-tab" id="tab-sstf" onclick="selectVizTab('sstf')">SSTF</button>
+        <button class="viz-tab" id="tab-scan" onclick="selectVizTab('scan')">SCAN</button>
+        <button class="viz-tab" id="tab-cscan" onclick="selectVizTab('cscan')">C-SCAN</button>
+      </div>
+
+      <!-- Animation Controls -->
+      <div class="anim-controls">
+        <button class="anim-btn" onclick="animPrev()" title="Previous Step">⏮</button>
+        <button class="anim-btn" id="playPauseBtn" onclick="togglePlay()" title="Play/Pause">▶</button>
+        <button class="anim-btn" onclick="animNext()" title="Next Step">⏭</button>
+        <span class="anim-step-label">Step <span id="stepCurrent">0</span> / <span id="stepTotal">0</span></span>
+        <label class="speed-label">Speed:
+          <input type="range" id="animSpeed" min="100" max="1500" value="600" step="100"
+                 class="speed-slider" oninput="updateSpeed()"/>
+        </label>
+      </div>
+
+      <!-- Disk Track Visualization -->
+      <div class="disk-viz-card">
+        <div class="disk-viz-header">
+          <span id="currentAlgoLabel">FCFS — Head Movement</span>
+          <span class="disk-range-label">Disk: 0 – <span id="vizDiskSize">199</span></span>
+        </div>
+        <canvas id="diskTrackCanvas" height="140"></canvas>
+        <div class="disk-track-labels">
+          <span>0</span><span id="trackLabelMid">100</span><span id="trackLabelMax">199</span>
+        </div>
+      </div>
+
+      <!-- Seek Path Chart (Chart.js) -->
+      <div class="chart-card">
+        <div class="chart-card-header">Seek Path Graph</div>
+        <div class="chart-wrapper">
+          <canvas id="seekPathChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Result Cards -->
+      <div id="resultCards" class="result-cards-grid"></div>
+    </section>
+
+    <!-- ===========================
+         SECTION 3: COMPARE
+    =========================== -->
+    <section id="section-compare" class="content-section">
+      <div class="section-header">
+        <h1 class="section-title">Algorithm Comparison</h1>
+        <p class="section-sub">Side-by-side analysis of all algorithms</p>
+      </div>
+
+      <!-- Best Algorithm Banner -->
+      <div id="bestAlgoBanner" class="best-algo-banner">
+        <div class="best-badge">🏆 BEST</div>
+        <div class="best-info">
+          <div class="best-name" id="bestAlgoName">—</div>
+          <div class="best-reason" id="bestAlgoReason">Run simulation to see results</div>
+        </div>
+      </div>
+
+      <!-- Comparison Bar Chart -->
+      <div class="chart-card">
+        <div class="chart-card-header">Total Seek Time Comparison</div>
+        <div class="chart-wrapper">
+          <canvas id="compareBarChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Comparison Table -->
+      <div class="table-card">
+        <div class="table-card-header">Detailed Comparison Table</div>
+        <div class="table-wrapper">
+          <table class="compare-table" id="compareTable">
+            <thead>
+              <tr>
+                <th>Algorithm</th>
+                <th>Seek Sequence</th>
+                <th>Total Seek Time</th>
+                <th>Movements</th>
+                <th>Throughput</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="compareTableBody">
+              <tr><td colspan="6" class="table-empty">Run simulation first</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Throughput Chart -->
+      <div class="chart-card">
+        <div class="chart-card-header">Throughput Comparison (req / seek-unit)</div>
+        <div class="chart-wrapper">
+          <canvas id="throughputChart"></canvas>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
